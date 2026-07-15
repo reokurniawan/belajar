@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JurisDoc - Dashboard Catatan & Tugas Hukum</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col md:flex-row">
+
+    <!-- Sidebar / Navigasi Kiri -->
+    <aside class="w-full md:w-80 bg-slate-900 text-white flex flex-col border-r border-slate-800 shrink-0">
+        <!-- Logo / Brand -->
+        <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center text-slate-950 font-bold text-xl shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none tracking-wide text-amber-400">JurisDoc</h1>
+                    <span class="text-xs text-slate-400 font-medium">Asisten Studi Hukum</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pencarian Mata Kuliah -->
+        <div class="p-4 border-b border-slate-800">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </span>
+                <input type="text" id="subjectSearch" oninput="filterSubjects()" placeholder="Cari Mata Kuliah..." 
+                       class="w-full pl-9 pr-4 py-2 bg-slate-800 text-sm rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 border border-transparent focus:border-transparent transition-all">
+            </div>
+        </div>
+
+        <!-- Daftar Mata Kuliah (Scrollable) -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar max-h-[50vh] md:max-h-none">
+            <div class="p-3">
+                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Daftar Mata Kuliah</p>
+                <ul id="subjectList" class="space-y-1">
+                    <!-- Dinamis dimasukkan via JS -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Menu Tambahan / Settings & Sync di Bagian Bawah -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+            <button onclick="switchTab('sync-panel')" id="btnSyncTab" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all mb-2">
+                <i class="fa-solid fa-cloud-arrow-up text-amber-500"></i>
+                <span>Google Drive & Sheets</span>
+            </button>
+            <div class="flex items-center justify-between text-xs text-slate-500 px-1 pt-2">
+                <span>Status Koneksi:</span>
+                <span id="connectionBadge" class="flex items-center gap-1.5 text-red-400 font-semibold">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Offline/Lokal
+                </span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Konten Utama -->
+    <main class="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+        
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0">
+            <div>
+                <h2 id="activeSubjectTitle" class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-amber-500"></i> Semua Mata Kuliah
+                </h2>
+                <p id="activeSubjectSubtitle" class="text-xs text-slate-500 mt-1">Menampilkan rangkuman seluruh catatan dan tugas kuliah Anda.</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="openNoteModal()" class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-md shadow-amber-500/10">
+                    <i class="fa-solid fa-plus"></i> Catat Baru
+                </button>
+                <button onclick="openTaskModal()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                    <i class="fa-solid fa-list-check"></i> Tugas Baru
+                </button>
+            </div>
+        </header>
+
+        <!-- Container Utama dengan Tab-Tab -->
+        <div class="flex-1 p-6 overflow-y-auto custom-scrollbar">
+
+            <!-- Alert / Notifikasi -->
+            <div id="toastNotification" class="hidden fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-800 transform translate-y-0 transition-all duration-300">
+                <div id="toastIcon" class="text-amber-500"><i class="fa-solid fa-circle-info"></i></div>
+                <div id="toastMessage" class="text-sm font-medium">Notifikasi berhasil dipicu!</div>
+            </div>
+
+            <!-- Tab 1: Dashboard Ringkasan & Detail Mata Kuliah -->
+            <div id="tab-dashboard" class="space-y-6">
+                <!-- Statistik Ringkas -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 text-xl font-semibold">
+                            <i class="fa-solid fa-file-pen"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block">Total Catatan</span>
+                            <span id="statTotalNotes" class="text-2xl font-bold text-slate-900">0</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center text-red-600 text-xl font-semibold">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block">Tugas Belum Selesai</span>
+                            <span id="statPendingTasks" class="text-2xl font-bold text-slate-900">0</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-green-600 text-xl font-semibold">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block">Tugas Selesai</span>
+                            <span id="statCompletedTasks" class="text-2xl font-bold text-slate-900">0</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 text-xl font-semibold">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block">Status Sync G-Drive</span>
+                            <span id="statSyncStatus" class="text-sm font-bold text-slate-900 block mt-1">Belum Terhubung</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pembagian Grid Catatan & Tugas -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- Sektor Catatan (Mencatat) -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px]">
+                        <div class="flex items-center justify-between mb-4 shrink-0">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-file-signature text-amber-500 text-lg"></i>
+                                <h3 class="font-bold text-slate-950">Catatan Kuliah</h3>
+                            </div>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-semibold" id="notesCounter">0 Catatan</span>
+                        </div>
+                        <!-- Daftar Catatan -->
+                        <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1" id="notesContainer">
+                            <!-- Loop Catatan Dinamis -->
+                        </div>
+                    </div>
+
+                    <!-- Sektor Tugas -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px]">
+                        <div class="flex items-center justify-between mb-4 shrink-0">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-indigo-500 text-lg"></i>
+                                <h3 class="font-bold text-slate-950">Daftar Tugas & Deadline</h3>
+                            </div>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-semibold" id="tasksCounter">0 Tugas</span>
+                        </div>
+                        <!-- Daftar Tugas -->
+                        <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1" id="tasksContainer">
+                            <!-- Loop Tugas Dinamis -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Tab 2: Panel Sinkronisasi Google Drive / Sheets -->
+            <div id="tab-sync-panel" class="hidden max-w-3xl mx-auto space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-4 mb-6">
+                        <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 text-xl">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-900">Integrasi Google Drive & Google Sheets</h3>
+                            <p class="text-xs text-slate-500">Hubungkan dashboard studi hukum Anda langsung ke Google Sheets dan Folder Google Drive Anda.</p>
+                        </div>
+                    </div>
+
+                    <!-- Form Pengaturan URL Apps Script -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Google Apps Script Web App URL</label>
+                            <input type="url" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" 
+                                   class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                            <p class="text-xs text-slate-400 mt-1">Gunakan kode Google Apps Script yang kami sediakan di panduan bawah untuk membuat Web App pribadi Anda.</p>
+                        </div>
+
+                        <div class="flex gap-2 pt-2">
+                            <button onclick="saveSyncSettings()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all">
+                                <i class="fa-solid fa-floppy-disk mr-1.5"></i> Simpan Pengaturan
+                            </button>
+                            <button onclick="testConnection()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all">
+                                <i class="fa-solid fa-circle-nodes mr-1.5"></i> Tes Koneksi & Sinkronisasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informasi & Panduan Integrasi (Panduan Lengkap) -->
+                <div class="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md space-y-4">
+                    <h4 class="font-bold text-amber-400 flex items-center gap-2 text-md">
+                        <i class="fa-solid fa-circle-info"></i> Panduan Konfigurasi Database (Langkah demi Langkah)
+                    </h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Aplikasi ini berjalan mandiri di browser Anda menggunakan penyimpanan lokal (LocalStorage). Untuk menyimpan data secara permanen di <strong>Google Sheets</strong> dan mengupload berkas ke <strong>Google Drive</strong> secara gratis, ikuti langkah berikut:
+                    </p>
+                    <ol class="list-decimal list-inside text-xs text-slate-300 space-y-2.5 pl-2 leading-relaxed">
+                        <li>Buat Spreadsheet baru di <span class="text-amber-300 font-semibold">Google Sheets</span>. Beri nama misalnya <strong>"JurisDoc Database"</strong>.</li>
+                        <li>Di dalam Google Sheets, klik menu <span class="text-amber-300 font-semibold">Ekstensi (Extensions) > Apps Script</span>.</li>
+                        <li>Hapus semua kode bawaan, lalu salin (copy) kode script backend yang telah kami sediakan di bagian luar web ini (dalam instruksi chat).</li>
+                        <li>Klik tombol <span class="text-amber-300 font-semibold">Simpan / Save</span> (ikon disket).</li>
+                        <li>Klik tombol <span class="text-amber-300 font-semibold">Terapkan > Penerapan baru (Deploy > New Deployment)</span>.</li>
+                        <li>Pilih jenis <span class="text-amber-300 font-semibold">Aplikasi Web (Web App)</span>.</li>
+                        <li>Setel <strong>"Yang memiliki akses" (Who has access)</strong> menjadi <span class="text-amber-300 font-semibold">"Siapa saja" (Anyone)</span>. Klik Terapkan (Deploy).</li>
+                        <li>Izinkan akses keamanan akun Google Anda (klik Advanced > Go to Untitled Project (unsafe) jika muncul peringatan).</li>
+                        <li>Salin <strong>URL Aplikasi Web (Web App URL)</strong> yang diberikan dan tempelkan (paste) di kolom input di atas!</li>
+                    </ol>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL 1: Tambah/Edit Catatan -->
+    <div id="noteModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            <!-- Header Modal -->
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 id="noteModalTitle" class="font-bold text-lg text-amber-400">Tambah Catatan Baru</h3>
+                <button onclick="closeNoteModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Body Modal (Form) -->
+            <form id="noteForm" onsubmit="saveNote(event)" class="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+                <input type="hidden" id="editNoteId">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Mata Kuliah</label>
+                    <select id="noteSubject" required class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                        <!-- Options generated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Judul Catatan / Bab</label>
+                    <input type="text" id="noteTitle" required placeholder="Contoh: Pengantar Asas Legalisasi & Sejarah Hukum" 
+                           class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Isi Rangkuman / Catatan</label>
+                    <textarea id="noteContent" required rows="6" placeholder="Tuliskan analisis hukum, pasal-pasal, yurisprudensi, atau poin kuliah di sini..." 
+                              class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm custom-scrollbar"></textarea>
+                </div>
+
+                <!-- Bagian Upload File/Foto -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Lampiran File / Foto Materi</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-lg hover:border-amber-500 transition-all cursor-pointer relative">
+                        <div class="space-y-1 text-center">
+                            <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                            <div class="flex text-sm text-slate-600">
+                                <label for="noteFileInput" class="relative cursor-pointer bg-white rounded-md font-medium text-amber-600 hover:text-amber-500 focus-within:outline-none">
+                                    <span>Pilih berkas</span>
+                                    <input id="noteFileInput" name="noteFileInput" type="file" class="sr-only" onchange="handleNoteFileSelect(this)">
+                                </label>
+                                <p class="pl-1">atau seret ke sini</p>
+                            </div>
+                            <p class="text-xs text-slate-500 text-center">Foto (PNG, JPG), PDF, Word, atau Excel up to 5MB</p>
+                        </div>
+                    </div>
+                    <!-- Preview List Lampiran -->
+                    <div id="noteAttachmentPreview" class="mt-3 grid grid-cols-1 gap-2">
+                        <!-- Dynamic attachment item -->
+                    </div>
+                </div>
+
+                <!-- Footer Modal -->
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+                    <button type="button" onclick="closeNoteModal()" class="px-5 py-2.5 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-all">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-sm font-bold transition-all shadow-md shadow-amber-500/10">Simpan Catatan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Tambah/Edit Tugas -->
+    <div id="taskModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 id="taskModalTitle" class="font-bold text-lg text-amber-400">Tambah Tugas Baru</h3>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="taskForm" onsubmit="saveTask(event)" class="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+                <input type="hidden" id="editTaskId">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Mata Kuliah</label>
+                    <select id="taskSubject" required class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                        <!-- Options generated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama Tugas / Instruksi</label>
+                    <input type="text" id="taskTitle" required placeholder="Contoh: Membuat Paper Analisis Kasus Wanprestasi" 
+                           class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Batas Waktu (Deadline)</label>
+                        <input type="date" id="taskDueDate" required 
+                               class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Prioritas</label>
+                        <select id="taskPriority" required class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                            <option value="Tinggi">🔴 Tinggi</option>
+                            <option value="Sedang" selected>🟡 Sedang</option>
+                            <option value="Rendah">🟢 Rendah</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Catatan Tambahan / Link Sumber</label>
+                    <textarea id="taskDescription" rows="3" placeholder="Tulis instruksi dosen atau catatan tambahan di sini..." 
+                              class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"></textarea>
+                </div>
+
+                <!-- Bagian Upload File Tugas -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Lampiran File Soal / Jawaban Tugas</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-lg hover:border-amber-500 transition-all cursor-pointer relative">
+                        <div class="space-y-1 text-center">
+                            <i class="fa-solid fa-paperclip text-3xl text-slate-400 mb-2"></i>
+                            <div class="flex text-sm text-slate-600">
+                                <label for="taskFileInput" class="relative cursor-pointer bg-white rounded-md font-medium text-amber-600 hover:text-amber-500 focus-within:outline-none">
+                                    <span>Pilih berkas</span>
+                                    <input id="taskFileInput" name="taskFileInput" type="file" class="sr-only" onchange="handleTaskFileSelect(this)">
+                                </label>
+                                <p class="pl-1">atau seret ke sini</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Preview List Lampiran -->
+                    <div id="taskAttachmentPreview" class="mt-3 grid grid-cols-1 gap-2">
+                        <!-- Dynamic attachment item -->
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+                    <button type="button" onclick="closeTaskModal()" class="px-5 py-2.5 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-all">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition-all">Simpan Tugas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Daftar Mata Kuliah Hukum Lengkap sesuai input User
+        const rawSubjects = [
+            "Antropologi Hukum", "Bahasa Indonesia", "Ilmu Negara", "Penalaran Hukum & Logika", 
+            "Pengantar Ilmu Hukum", "Sosiologi", "Pengantar Filsafat", "Hukum Islam", "Hukum Perdata", 
+            "Hukum Pidana", "Hukum Tata Negara", "Pengantar Hukum Indonesia", "Hukum Acara Pidana", 
+            "Hukum Administrasi Negara", "Hukum Agraria", "Hukum Perusahaan dan Lembaga Keuangan", 
+            "Tindak Pidana Terhadap Harta Benda dan Subyek Hukum", "Hukum Perjanjian dan Jaminan", 
+            "Hukum Internasional", "Islam dan IPTEKS", "Hukum Acara Perdata", "Hukum Ketenagakerjaan", 
+            "Hukum Lingkungan", "Hukum Waris Indonesia", "Ilmu Perundang-Undangan", "Hukum Pemerintahan Daerah", 
+            "Hukum dan HAM", "Managemen Kantor Hukum", "Etika Profesi", "Filsafat Hukum", "Hukum Adat", 
+            "Hukum Perlindungan Konsumen", "Metode Penelitian Hukum", "Kekayaan Intelektual Terapan", 
+            "Hukum Pajak dan Perizinan", "Hukum Konstitusi dan Lembaga Negara", "Cyber Law", "Hukum Pidana Khusus", 
+            "Hukum Acara Tata Usaha Negara", "Hukum Perdata Internasional", "Hukum Acara Mahkamah Konstitusi", 
+            "PLKH Praktisi Hukum", "Pendidikan Anti Korupsi", "Hukum Ekonomi Bisnis", 
+            "Hukum Kejahatan Humaniter Internasional", "Hukum Pidana Internasional", "Hukum Investasi dan Pasar Modal", 
+            "Kapita Selekta Hukum Tata Negara", "Studi Klinis Kepidanaan", "Studi Klinis Keperdataan", 
+            "Studi Klinis Ketatanegaraan dan Keadministrasian", "Kriminologi", "Hukum Pidana Islam", 
+            "Hukum Acara Pidana Khusus", "Hukum Acara Perdata Khusus", "Hukum Kepailitan Terapan", 
+            "Hukum Kesehatan", "Hukum Sumber Daya Alam dan Pertambangan", "Hukum Ekonomi Islam", 
+            "Penologi & Victimologi", "Pembaruan Hukum Pidana"
+        ];
+
+        // Model State Aplikasi
+        let state = {
+            subjects: rawSubjects.sort(),
+            currentSubject: "Semua Mata Kuliah",
+            notes: [],
+            tasks: [],
+            activeTab: 'dashboard',
+            settings: {
+                appsScriptUrl: "https://script.google.com/macros/s/AKfycbzznAkE12HJL17DDGQMEN7fcfbVKrdbpJ9Ut9ciQqfeRT3bZaQ_zqBmqEP2myUjWPGR/exec"
+            }
+        };
+
+        // File temporer yang sedang disiapkan untuk di-upload pada form modal
+        let currentNoteFile = null;
+        let currentTaskFile = null;
+
+        // Inisialisasi Aplikasi Saat Memuat Halaman
+        window.addEventListener('load', () => {
+            loadFromLocalStorage();
+            renderSubjectList();
+            renderSubjectSelectOptions();
+            renderDashboard();
+            updateStats();
+            checkAppsScriptStatus();
+        });
+
+        // Simpan state ke LocalStorage agar tidak hilang saat reload
+        function saveToLocalStorage() {
+            localStorage.setItem('jurisdoc_state', JSON.stringify(state));
+        }
+
+        // Memuat state dari LocalStorage
+        function loadFromLocalStorage() {
+            const data = localStorage.getItem('jurisdoc_state');
+            if (data) {
+                try {
+                    state = JSON.parse(data);
+                    // Pastikan daftar subject tetap lengkap & terurut jika ada penyesuaian lokal
+                    if (!state.subjects || state.subjects.length === 0) {
+                        state.subjects = rawSubjects.sort();
+                    }
+                    if (!state.notes) state.notes = [];
+                    if (!state.tasks) state.tasks = [];
+                    if (!state.settings) {
+                        state.settings = { 
+                            appsScriptUrl: "https://script.google.com/macros/s/AKfycbzznAkE12HJL17DDGQMEN7fcfbVKrdbpJ9Ut9ciQqfeRT3bZaQ_zqBmqEP2myUjWPGR/exec" 
+                        };
+                    } else if (!state.settings.appsScriptUrl) {
+                        state.settings.appsScriptUrl = "https://script.google.com/macros/s/AKfycbzznAkE12HJL17DDGQMEN7fcfbVKrdbpJ9Ut9ciQqfeRT3bZaQ_zqBmqEP2myUjWPGR/exec";
+                    }
+                } catch (e) {
+                    console.error("Gagal memuat LocalStorage", e);
+                }
+            }
+        }
+
+        // Menampilkan daftar mata kuliah pada sidebar navigasi
+        function renderSubjectList(filtered = state.subjects) {
+            const listEl = document.getElementById('subjectList');
+            listEl.innerHTML = '';
+
+            // Buat menu "Semua Mata Kuliah" di baris paling atas
+            const allLi = document.createElement('li');
+            allLi.innerHTML = `
+                <button onclick="selectSubject('Semua Mata Kuliah')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    state.currentSubject === 'Semua Mata Kuliah' 
+                    ? 'bg-amber-500 text-slate-950 font-bold' 
+                    : 'text-slate-300 hover:bg-slate-800'
+                }">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-book-open"></i> Semua Mata Kuliah
+                    </span>
+                    <span class="text-xs px-1.5 py-0.5 rounded ${state.currentSubject === 'Semua Mata Kuliah' ? 'bg-amber-600 text-slate-950' : 'bg-slate-800 text-slate-400'}">${state.notes.length + state.tasks.length}</span>
+                </button>
+            `;
+            listEl.appendChild(allLi);
+
+            // Tampilkan mata kuliah satu per satu
+            filtered.forEach(subj => {
+                const li = document.createElement('li');
+                const noteCount = state.notes.filter(n => n.subject === subj).length;
+                const taskCount = state.tasks.filter(t => t.subject === subj).length;
+                const isActive = state.currentSubject === subj;
+
+                li.innerHTML = `
+                    <button onclick="selectSubject('${subj}')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        isActive 
+                        ? 'bg-slate-800 text-amber-400 border-l-4 border-amber-500 pl-2' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }">
+                        <span class="truncate text-left flex items-center gap-2 pr-1">
+                            <i class="fa-solid fa-scale-balanced text-xs text-slate-500"></i>
+                            <span class="truncate" title="${subj}">${subj}</span>
+                        </span>
+                        <div class="flex gap-1 shrink-0">
+                            ${noteCount > 0 ? `<span class="text-[10px] px-1 bg-amber-500/20 text-amber-400 rounded-sm font-semibold" title="Catatan"><i class="fa-solid fa-file-pen"></i> ${noteCount}</span>` : ''}
+                            ${taskCount > 0 ? `<span class="text-[10px] px-1 bg-indigo-500/20 text-indigo-400 rounded-sm font-semibold" title="Tugas"><i class="fa-solid fa-list-check"></i> ${taskCount}</span>` : ''}
+                        </div>
+                    </button>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        // Filter / Pencarian Mata Kuliah
+        function filterSubjects() {
+            const query = document.getElementById('subjectSearch').value.toLowerCase();
+            const filtered = state.subjects.filter(s => s.toLowerCase().includes(query));
+            renderSubjectList(filtered);
+        }
+
+        // Memilih Mata Kuliah Aktif
+        function selectSubject(subjectName) {
+            state.currentSubject = subjectName;
+            
+            // Perbarui visual judul header
+            const titleEl = document.getElementById('activeSubjectTitle');
+            const subTitleEl = document.getElementById('activeSubjectSubtitle');
+            
+            if (subjectName === "Semua Mata Kuliah") {
+                titleEl.innerHTML = `<i class="fa-solid fa-book-open text-amber-500"></i> Semua Mata Kuliah`;
+                subTitleEl.textContent = "Menampilkan rangkuman seluruh catatan dan tugas kuliah Anda.";
+            } else {
+                titleEl.innerHTML = `<i class="fa-solid fa-scale-balanced text-amber-500"></i> ${subjectName}`;
+                subTitleEl.textContent = `Menampilkan data studi khusus mata kuliah ${subjectName}`;
+            }
+
+            // Pindah tab ke dashboard jika sedang berada di tab pengaturan
+            switchTab('dashboard');
+            
+            renderSubjectList();
+            renderDashboard();
+            updateStats();
+        }
+
+        // Mengisi pilihan drop-down select mata kuliah di dalam modal form
+        function renderSubjectSelectOptions() {
+            const noteSelect = document.getElementById('noteSubject');
+            const taskSelect = document.getElementById('taskSubject');
+
+            noteSelect.innerHTML = '';
+            taskSelect.innerHTML = '';
+
+            state.subjects.forEach(subj => {
+                const optNote = document.createElement('option');
+                optNote.value = subj;
+                optNote.textContent = subj;
+                noteSelect.appendChild(optNote);
+
+                const optTask = document.createElement('option');
+                optTask.value = subj;
+                optTask.textContent = subj;
+                taskSelect.appendChild(optTask);
+            });
+        }
+
+        // Navigasi Tab (Dashboard vs Google Sync)
+        function switchTab(tabName) {
+            state.activeTab = tabName;
+            
+            const tabDashboard = document.getElementById('tab-dashboard');
+            const tabSyncPanel = document.getElementById('tab-sync-panel');
+            const btnSyncTab = document.getElementById('btnSyncTab');
+
+            if (tabName === 'dashboard') {
+                tabDashboard.classList.remove('hidden');
+                tabSyncPanel.classList.add('hidden');
+                btnSyncTab.classList.remove('bg-slate-800', 'text-white');
+            } else if (tabName === 'sync-panel') {
+                tabDashboard.classList.add('hidden');
+                tabSyncPanel.classList.remove('hidden');
+                btnSyncTab.classList.add('bg-slate-800', 'text-white');
+            }
+        }
+
+        // === BAGIAN FITUR CATATAN (MENCATAT) ===
+        function openNoteModal(editId = null) {
+            const modal = document.getElementById('noteModal');
+            const form = document.getElementById('noteForm');
+            const modalTitle = document.getElementById('noteModalTitle');
+            
+            form.reset();
+            currentNoteFile = null;
+            document.getElementById('noteAttachmentPreview').innerHTML = '';
+
+            // Set default subject di form sesuai subject sidebar yang aktif
+            if (state.currentSubject !== "Semua Mata Kuliah") {
+                document.getElementById('noteSubject').value = state.currentSubject;
+            }
+
+            if (editId) {
+                modalTitle.textContent = "Edit Catatan";
+                const note = state.notes.find(n => n.id === editId);
+                if (note) {
+                    document.getElementById('editNoteId').value = note.id;
+                    document.getElementById('noteSubject').value = note.subject;
+                    document.getElementById('noteTitle').value = note.title;
+                    document.getElementById('noteContent').value = note.content;
+                    
+                    if (note.attachment) {
+                        currentNoteFile = note.attachment;
+                        renderNoteAttachmentPreview(note.attachment.name, note.attachment.type);
+                    }
+                }
+            } else {
+                modalTitle.textContent = "Tambah Catatan Baru";
+                document.getElementById('editNoteId').value = "";
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeNoteModal() {
+            document.getElementById('noteModal').classList.add('hidden');
+        }
+
+        // Membaca file upload untuk catatan
+        function handleNoteFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                showToast("Ukuran berkas melebihi batasan 5MB!", true);
+                input.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentNoteFile = {
+                    name: file.name,
+                    type: file.type,
+                    dataUrl: e.target.result // Base64 data url
+                };
+                renderNoteAttachmentPreview(file.name, file.type);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderNoteAttachmentPreview(name, type) {
+            const previewContainer = document.getElementById('noteAttachmentPreview');
+            const icon = type.includes('image') ? 'fa-image text-emerald-500' : 'fa-file-pdf text-red-500';
+            
+            previewContainer.innerHTML = `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fa-solid ${icon} shrink-0"></i>
+                        <span class="text-xs font-semibold text-slate-700 truncate" title="${name}">${name}</span>
+                    </div>
+                    <button type="button" onclick="removeNoteAttachment()" class="text-slate-400 hover:text-red-500 transition-all ml-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function removeNoteAttachment() {
+            currentNoteFile = null;
+            document.getElementById('noteFileInput').value = '';
+            document.getElementById('noteAttachmentPreview').innerHTML = '';
+        }
+
+        // Menyimpan catatan
+        function saveNote(event) {
+            event.preventDefault();
+            const id = document.getElementById('editNoteId').value;
+            const subject = document.getElementById('noteSubject').value;
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            
+            const noteData = {
+                id: id ? id : 'note_' + Date.now(),
+                subject: subject,
+                title: title,
+                content: content,
+                date: id ? state.notes.find(n => n.id === id).date : new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'}),
+                attachment: currentNoteFile
+            };
+
+            if (id) {
+                // Update
+                const index = state.notes.findIndex(n => n.id === id);
+                state.notes[index] = noteData;
+                showToast("Catatan berhasil diperbarui!");
+            } else {
+                // Insert Baru
+                state.notes.unshift(noteData);
+                showToast("Catatan baru berhasil ditambahkan!");
+            }
+
+            saveToLocalStorage();
+            closeNoteModal();
+            renderDashboard();
+            updateStats();
+            renderSubjectList();
+
+            // Auto sync ke cloud jika url diset
+            if (state.settings.appsScriptUrl) {
+                syncWithGoogleDrive();
+            }
+        }
+
+        function deleteNote(id) {
+            // Kita ganti confirm standard dengan custom confirmation modal
+            const confirmed = confirm("Apakah Anda yakin ingin menghapus catatan kuliah ini?");
+            if (!confirmed) return;
+
+            state.notes = state.notes.filter(n => n.id !== id);
+            saveToLocalStorage();
+            renderDashboard();
+            updateStats();
+            renderSubjectList();
+            showToast("Catatan berhasil dihapus.");
+
+            if (state.settings.appsScriptUrl) {
+                syncWithGoogleDrive();
+            }
+        }
+
+        // === BAGIAN FITUR TUGAS ===
+        function openTaskModal(editId = null) {
+            const modal = document.getElementById('taskModal');
+            const form = document.getElementById('taskForm');
+            const modalTitle = document.getElementById('taskModalTitle');
+            
+            form.reset();
+            currentTaskFile = null;
+            document.getElementById('taskAttachmentPreview').innerHTML = '';
+
+            if (state.currentSubject !== "Semua Mata Kuliah") {
+                document.getElementById('taskSubject').value = state.currentSubject;
+            }
+
+            if (editId) {
+                modalTitle.textContent = "Edit Tugas Kuliah";
+                const task = state.tasks.find(t => t.id === editId);
+                if (task) {
+                    document.getElementById('editTaskId').value = task.id;
+                    document.getElementById('taskSubject').value = task.subject;
+                    document.getElementById('taskTitle').value = task.title;
+                    document.getElementById('taskDueDate').value = task.dueDate;
+                    document.getElementById('taskPriority').value = task.priority;
+                    document.getElementById('taskDescription').value = task.description;
+
+                    if (task.attachment) {
+                        currentTaskFile = task.attachment;
+                        renderTaskAttachmentPreview(task.attachment.name, task.attachment.type);
+                    }
+                }
+            } else {
+                modalTitle.textContent = "Tambah Tugas Baru";
+                document.getElementById('editTaskId').value = "";
+                // Tanggal default hari ini
+                document.getElementById('taskDueDate').value = new Date().toISOString().split('T')[0];
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+        }
+
+        function handleTaskFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                showToast("Ukuran berkas melebihi batasan 5MB!", true);
+                input.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentTaskFile = {
+                    name: file.name,
+                    type: file.type,
+                    dataUrl: e.target.result
+                };
+                renderTaskAttachmentPreview(file.name, file.type);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderTaskAttachmentPreview(name, type) {
+            const previewContainer = document.getElementById('taskAttachmentPreview');
+            const icon = type.includes('image') ? 'fa-image text-emerald-500' : 'fa-file-arrow-up text-indigo-500';
+
+            previewContainer.innerHTML = `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fa-solid ${icon} shrink-0"></i>
+                        <span class="text-xs font-semibold text-slate-700 truncate" title="${name}">${name}</span>
+                    </div>
+                    <button type="button" onclick="removeTaskAttachment()" class="text-slate-400 hover:text-red-500 transition-all ml-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function removeTaskAttachment() {
+            currentTaskFile = null;
+            document.getElementById('taskFileInput').value = '';
+            document.getElementById('taskAttachmentPreview').innerHTML = '';
+        }
+
+        function saveTask(event) {
+            event.preventDefault();
+            const id = document.getElementById('editTaskId').value;
+            const subject = document.getElementById('taskSubject').value;
+            const title = document.getElementById('taskTitle').value;
+            const dueDate = document.getElementById('taskDueDate').value;
+            const priority = document.getElementById('taskPriority').value;
+            const description = document.getElementById('taskDescription').value;
+
+            const taskData = {
+                id: id ? id : 'task_' + Date.now(),
+                subject: subject,
+                title: title,
+                dueDate: dueDate,
+                priority: priority,
+                description: description,
+                status: id ? state.tasks.find(t => t.id === id).status : "Belum Selesai",
+                attachment: currentTaskFile
+            };
+
+            if (id) {
+                const index = state.tasks.findIndex(t => t.id === id);
+                state.tasks[index] = taskData;
+                showToast("Tugas berhasil diperbarui!");
+            } else {
+                state.tasks.unshift(taskData);
+                showToast("Tugas baru berhasil dijadwalkan!");
+            }
+
+            saveToLocalStorage();
+            closeTaskModal();
+            renderDashboard();
+            updateStats();
+            renderSubjectList();
+
+            if (state.settings.appsScriptUrl) {
+                syncWithGoogleDrive();
+            }
+        }
+
+        function deleteTask(id) {
+            const confirmed = confirm("Apakah Anda yakin ingin menghapus tugas kuliah ini?");
+            if (!confirmed) return;
+
+            state.tasks = state.tasks.filter(t => t.id !== id);
+            saveToLocalStorage();
+            renderDashboard();
+            updateStats();
+            renderSubjectList();
+            showToast("Tugas berhasil dihapus.");
+
+            if (state.settings.appsScriptUrl) {
+                syncWithGoogleDrive();
+            }
+        }
+
+        function toggleTaskStatus(id) {
+            const index = state.tasks.findIndex(t => t.id === id);
+            if (index !== -1) {
+                state.tasks[index].status = state.tasks[index].status === "Selesai" ? "Belum Selesai" : "Selesai";
+                saveToLocalStorage();
+                renderDashboard();
+                updateStats();
+                showToast(`Tugas ditandai sebagai ${state.tasks[index].status}.`);
+                
+                if (state.settings.appsScriptUrl) {
+                    syncWithGoogleDrive();
+                }
+            }
+        }
+
+        // Menghitung sisa hari deadline
+        function getDaysRemaining(dateString) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const target = new Date(dateString);
+            target.setHours(0,0,0,0);
+
+            const diffTime = target - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return { text: "Hari ini", style: "bg-red-500 text-white animate-pulse" };
+            if (diffDays === 1) return { text: "Besok", style: "bg-orange-500 text-white" };
+            if (diffDays < 0) return { text: `Telat ${Math.abs(diffDays)} hari`, style: "bg-slate-400 text-white font-medium" };
+            return { text: `${diffDays} hari lagi`, style: diffDays <= 3 ? "bg-red-100 text-red-700 font-medium" : "bg-slate-100 text-slate-700" };
+        }
+
+        // === RENDER DASHBOARD (Catatan & Tugas) ===
+        function renderDashboard() {
+            const notesContainer = document.getElementById('notesContainer');
+            const tasksContainer = document.getElementById('tasksContainer');
+
+            // Saring berdasarkan Mata Kuliah terpilih di sidebar
+            const activeNotes = state.currentSubject === "Semua Mata Kuliah" 
+                ? state.notes 
+                : state.notes.filter(n => n.subject === state.currentSubject);
+
+            const activeTasks = state.currentSubject === "Semua Mata Kuliah" 
+                ? state.tasks 
+                : state.tasks.filter(t => t.subject === state.currentSubject);
+
+            // 1. Tampilkan Catatan
+            document.getElementById('notesCounter').textContent = `${activeNotes.length} Catatan`;
+            notesContainer.innerHTML = '';
+
+            if (activeNotes.length === 0) {
+                notesContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
+                        <i class="fa-solid fa-file-invoice text-4xl mb-3 text-slate-300"></i>
+                        <p class="text-sm font-semibold">Belum ada catatan kuliah</p>
+                        <p class="text-xs text-slate-400 mt-1 max-w-xs">Buat rangkuman materi kuliah atau analisis pasal pertamamu dengan menekan tombol 'Catat Baru'.</p>
+                    </div>
+                `;
+            } else {
+                activeNotes.forEach(note => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white border border-slate-200 p-5 rounded-xl hover:border-slate-300 hover:shadow-md hover:shadow-slate-100/50 transition-all space-y-3 relative group";
+                    
+                    let attachmentBadge = '';
+                    if (note.attachment) {
+                        const isImg = note.attachment.type.includes('image');
+                        const downloadAction = `onclick="downloadBase64File('${note.attachment.dataUrl}', '${note.attachment.name}')"`;
+                        attachmentBadge = `
+                            <div class="mt-3 flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-lg text-xs cursor-pointer hover:bg-slate-100" ${downloadAction}>
+                                <span class="flex items-center gap-2 text-slate-700 truncate font-medium">
+                                    <i class="fa-solid ${isImg ? 'fa-image text-emerald-500' : 'fa-file-pdf text-red-500'}"></i>
+                                    <span class="truncate">${note.attachment.name}</span>
+                                </span>
+                                <span class="text-[10px] text-amber-600 font-semibold flex items-center gap-1"><i class="fa-solid fa-download"></i> Unduh</span>
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div>
+                            <span class="text-[10px] bg-amber-500/10 text-amber-700 font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mb-1.5">${note.subject}</span>
+                            <h4 class="font-bold text-slate-950 text-base leading-tight hover:text-amber-600 transition-colors cursor-pointer" onclick="openNoteModal('${note.id}')">${note.title}</h4>
+                            <p class="text-xs text-slate-400 mt-1 flex items-center gap-1"><i class="fa-solid fa-calendar-days text-[10px]"></i> ${note.date}</p>
+                        </div>
+                        <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed line-clamp-3">${note.content}</p>
+                        ${attachmentBadge}
+                        <div class="flex justify-end gap-1.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-slate-50">
+                            <button onclick="openNoteModal('${note.id}')" class="p-1.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-md border border-slate-200 flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                            </button>
+                            <button onclick="deleteNote('${note.id}')" class="p-1.5 px-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-md flex items-center gap-1">
+                                <i class="fa-solid fa-trash"></i> Hapus
+                            </button>
+                        </div>
+                    `;
+                    notesContainer.appendChild(card);
+                });
+            }
+
+            // 2. Tampilkan Tugas
+            document.getElementById('tasksCounter').textContent = `${activeTasks.length} Tugas`;
+            tasksContainer.innerHTML = '';
+
+            if (activeTasks.length === 0) {
+                tasksContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
+                        <i class="fa-solid fa-calendar-check text-4xl mb-3 text-slate-300"></i>
+                        <p class="text-sm font-semibold">Hore! Belum ada tugas tertunda</p>
+                        <p class="text-xs text-slate-400 mt-1 max-w-xs">Gunakan waktu ini untuk bersantai atau membaca kembali catatan-catatan kuliah Anda.</p>
+                    </div>
+                `;
+            } else {
+                activeTasks.forEach(task => {
+                    const card = document.createElement('div');
+                    const isCompleted = task.status === "Selesai";
+                    const isOverdue = new Date(task.dueDate) < new Date() && !isCompleted;
+                    const rem = getDaysRemaining(task.dueDate);
+                    
+                    let priorityBadge = '';
+                    if (task.priority === "Tinggi") priorityBadge = '<span class="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full inline-block">Mendesak</span>';
+                    else if (task.priority === "Sedang") priorityBadge = '<span class="text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full inline-block">Sedang</span>';
+                    else priorityBadge = '<span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full inline-block">Santai</span>';
+
+                    card.className = `border p-5 rounded-xl transition-all relative group flex flex-col justify-between ${
+                        isCompleted 
+                        ? 'bg-slate-50 border-slate-200 opacity-70' 
+                        : isOverdue 
+                        ? 'bg-white border-red-200 shadow-sm shadow-red-50/50' 
+                        : 'bg-white border-slate-200 shadow-sm'
+                    }`;
+
+                    let attachmentSection = '';
+                    if (task.attachment) {
+                        const downloadAction = `onclick="downloadBase64File('${task.attachment.dataUrl}', '${task.attachment.name}')"`;
+                        attachmentSection = `
+                            <div class="mt-3 flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-lg text-xs cursor-pointer hover:bg-slate-100" ${downloadAction}>
+                                <span class="flex items-center gap-2 text-slate-700 truncate font-medium">
+                                    <i class="fa-solid fa-paperclip text-indigo-500"></i>
+                                    <span class="truncate">${task.attachment.name}</span>
+                                </span>
+                                <span class="text-[10px] text-amber-600 font-semibold"><i class="fa-solid fa-download"></i> Unduh</span>
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div class="space-y-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[9px] bg-slate-900 text-white font-bold uppercase tracking-wider px-2 py-0.5 rounded-md inline-block">${task.subject}</span>
+                                    ${priorityBadge}
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full ${rem.style}">${rem.text}</span>
+                                </div>
+                                <button onclick="toggleTaskStatus('${task.id}')" class="w-6 h-6 rounded-full border border-slate-300 hover:border-amber-500 flex items-center justify-center hover:bg-amber-50 transition-all shrink-0 ${isCompleted ? 'bg-amber-500 border-amber-500 text-slate-950' : 'text-transparent'}">
+                                    <i class="fa-solid fa-check text-xs"></i>
+                                </button>
+                            </div>
+
+                            <div>
+                                <h4 class="font-bold text-slate-950 text-base leading-tight cursor-pointer ${isCompleted ? 'line-through text-slate-400' : ''}" onclick="openTaskModal('${task.id}')">${task.title}</h4>
+                                <div class="flex items-center gap-3 mt-1.5">
+                                    <p class="text-xs text-slate-500 flex items-center gap-1"><i class="fa-regular fa-clock"></i> Batas: ${new Date(task.dueDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</p>
+                                    <span class="text-[10px] font-bold ${isCompleted ? 'text-green-600' : 'text-amber-600'}">${isCompleted ? '✓ SELESAI' : '⏳ BELUM SELESAI'}</span>
+                                </div>
+                            </div>
+
+                            ${task.description ? `<p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-line">${task.description}</p>` : ''}
+                            ${attachmentSection}
+                        </div>
+
+                        <div class="flex justify-end gap-1.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity pt-3 border-t border-slate-50 mt-4">
+                            <button onclick="openTaskModal('${task.id}')" class="p-1.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-md border border-slate-200 flex items-center gap-1">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                            </button>
+                            <button onclick="deleteTask('${task.id}')" class="p-1.5 px-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-md flex items-center gap-1">
+                                <i class="fa-solid fa-trash"></i> Hapus
+                            </button>
+                        </div>
+                    `;
+                    tasksContainer.appendChild(card);
+                });
+            }
+        }
+
+        // Helper untuk Mengunduh attachment Base64
+        function downloadBase64File(base64Data, filename) {
+            const link = document.createElement("a");
+            link.href = base64Data;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Memperbarui Kotak Statistik Atas
+        function updateStats() {
+            const activeNotes = state.currentSubject === "Semua Mata Kuliah" 
+                ? state.notes 
+                : state.notes.filter(n => n.subject === state.currentSubject);
+
+            const activeTasks = state.currentSubject === "Semua Mata Kuliah" 
+                ? state.tasks 
+                : state.tasks.filter(t => t.subject === state.currentSubject);
+
+            const pending = activeTasks.filter(t => t.status !== "Selesai").length;
+            const completed = activeTasks.filter(t => t.status === "Selesai").length;
+
+            document.getElementById('statTotalNotes').textContent = activeNotes.length;
+            document.getElementById('statPendingTasks').textContent = pending;
+            document.getElementById('statCompletedTasks').textContent = completed;
+        }
+
+        // === SISTEM INTEGRASI GOOGLE DRIVE & SHEETS ===
+        function checkAppsScriptStatus() {
+            const urlInput = document.getElementById('appsScriptUrl');
+            const badge = document.getElementById('connectionBadge');
+            const statText = document.getElementById('statSyncStatus');
+
+            if (state.settings.appsScriptUrl) {
+                urlInput.value = state.settings.appsScriptUrl;
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Terhubung Cloud`;
+                badge.className = "flex items-center gap-1.5 text-emerald-500 font-semibold";
+                statText.textContent = "Sinkronisasi Aktif";
+                statText.className = "text-sm font-bold text-emerald-600 block mt-1";
+            } else {
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Offline/Lokal`;
+                badge.className = "flex items-center gap-1.5 text-red-400 font-semibold";
+                statText.textContent = "Belum Terhubung";
+                statText.className = "text-sm font-bold text-slate-500 block mt-1";
+            }
+        }
+
+        function saveSyncSettings() {
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            state.settings.appsScriptUrl = url;
+            saveToLocalStorage();
+            checkAppsScriptStatus();
+            showToast(url ? "Pengaturan Google Sync berhasil disimpan!" : "Koneksi cloud dinonaktifkan.");
+            
+            if (url) {
+                syncWithGoogleDrive();
+            }
+        }
+
+        // Tes Koneksi ke Backend Apps Script
+        function testConnection() {
+            const url = state.settings.appsScriptUrl;
+            if (!url) {
+                showToast("Tolong masukkan URL Google Apps Script terlebih dahulu!", true);
+                return;
+            }
+
+            showToast("Menghubungi server cloud Anda...");
+            
+            fetch(url, {
+                method: "POST",
+                mode: "no-cors", // Digunakan karena batasan CORS default Apps Script di browser tertentu
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    action: "ping"
+                })
+            })
+            .then(() => {
+                showToast("Koneksi berhasil terhubung! Memulai upload data...");
+                syncWithGoogleDrive();
+            })
+            .catch(err => {
+                console.error(err);
+                showToast("Gagal melakukan ping. Pastikan deployment diatur ke 'Anyone'.", true);
+            });
+        }
+
+        // Fungsi Inti untuk mengirim Data Catatan dan Tugas ke Google Spreadsheet / Drive
+        function syncWithGoogleDrive() {
+            const url = state.settings.appsScriptUrl;
+            if (!url) return;
+
+            // Kita kirimkan seluruh state notes & tasks untuk disalin ke Sheets
+            const cleanNotes = state.notes.map(n => ({
+                id: n.id,
+                subject: n.subject,
+                title: n.title,
+                content: n.content,
+                date: n.date,
+                hasAttachment: n.attachment ? "Ada" : "Tidak",
+                attachmentName: n.attachment ? n.attachment.name : "",
+                attachmentData: n.attachment ? n.attachment.dataUrl : "" // Kirim base64 agar disimpan di Drive
+            }));
+
+            const cleanTasks = state.tasks.map(t => ({
+                id: t.id,
+                subject: t.subject,
+                title: t.title,
+                dueDate: t.dueDate,
+                priority: t.priority,
+                description: t.description,
+                status: t.status,
+                hasAttachment: t.attachment ? "Ada" : "Tidak",
+                attachmentName: t.attachment ? t.attachment.name : "",
+                attachmentData: t.attachment ? t.attachment.dataUrl : ""
+            }));
+
+            fetch(url, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    action: "syncData",
+                    notes: cleanNotes,
+                    tasks: cleanTasks
+                })
+            })
+            .then(() => {
+                showToast("Semua data telah disinkronkan ke Google Drive & Sheets!");
+            })
+            .catch(err => {
+                console.error("Gagal sinkronisasi data ke Sheets:", err);
+                showToast("Sinkronisasi gagal, namun data tetap aman secara lokal.", true);
+            });
+        }
+
+        // UI Toast Notification
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toastNotification');
+            const msgEl = document.getElementById('toastMessage');
+            const iconEl = document.getElementById('toastIcon');
+
+            msgEl.textContent = message;
+            if (isError) {
+                iconEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-red-500"></i>`;
+            } else {
+                iconEl.innerHTML = `<i class="fa-solid fa-circle-check text-amber-500"></i>`;
+            }
+
+            toast.classList.remove('hidden');
+            toast.classList.add('translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
